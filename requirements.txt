@@ -1,0 +1,6 @@
+langchain-huggingface
+langchain-chroma
+transformers
+torch
+pypdf2
+accelerate

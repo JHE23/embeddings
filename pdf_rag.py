@@ -1,10 +1,8 @@
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 import transformers
 import torch
-import PyPDF2
-from unstructured.partition.auto import partition
+import PyPDF2 
 
 embeddings_model_id = "sentence-transformers/all-mpnet-base-v2"
 llm_model_id = "meta-llama/Llama-3.2-3B-Instruct"
@@ -37,27 +35,10 @@ class rag_llm:
         """
 
     def add_pdf_to_vector_store(self, file_path: str):
-        elements = partition(filename=file_path)
-        doc_list = [doc.text for doc in elements]
-        chunks = self.get_chunks_from_docs(docs=doc_list, chunk_size=800, overlap=200)
-        self.vector_store.add_texts(chunks)
-
-    def add_pdf_to_vector_store_direct(self, file_path: str):
-        elements = partition(filename=file_path)
-        doc_list = [doc.text for doc in elements]
-        self.vector_store.add_texts(doc_list)
-
-    def add_pdf_to_vector_store_pypdf(self, file_path: str):
-        text = self.extract_text_from_pdf(file_path)
-        docs = self.split_text_into_chunks(text)
-        self.vector_store.add_documents(docs)
-
-    def add_pdf_to_vector_store_custom(self, file_path: str):
         text = self.extract_text_from_pdf(file_path)
         text_list = text.splitlines()
         chunks = self.get_chunks_from_docs(docs=text_list, chunk_size=800, overlap=200)
         self.vector_store.add_texts(chunks)
-
     
     def ask(self, question: str, prompt: str = None):
         if not prompt:
@@ -74,7 +55,6 @@ class rag_llm:
                 context = context + "\n\n" + content
         if len(context) == 0:
             context = "No relevant information in database"
-        print(context)
 
         prompt = prompt + context
         messages = [
@@ -96,22 +76,6 @@ class rag_llm:
         return text
 
     @staticmethod
-    def split_text_into_chunks(text):
-        text_splitter = RecursiveCharacterTextSplitter(
-            # Set a really small chunk size, just to show.
-            chunk_size=500,
-            chunk_overlap=50,
-            length_function=len,
-            is_separator_regex=False,
-            separators=["\n\n", "\n"],
-            keep_separator=True,
-        )
-        docs = text_splitter.create_documents([text])
-        for doc in docs:
-            doc.page_content = doc.page_content.replace("\n", "")
-        return docs
-
-    @staticmethod
     def get_chunks_from_docs(docs: list[str], chunk_size: int, overlap: int):
         chunks = []
         chunk = ""
@@ -128,19 +92,11 @@ class rag_llm:
                 buffer = ""
         return chunks
 
-
 if __name__ == "__main__":
     doc_path = "English ESPP FAQ.pdf"
-    doc_path = "LifeTrends2025 1.pdf"
-    question = "what is the impact of AI on trust?"
+    question = "How does ESPP work?"
 
     rag = rag_llm()
     rag.add_pdf_to_vector_store(file_path=doc_path)
     response = rag.ask(question=question)
-    print(response)
-
-
-    rag_direct = rag_llm()
-    rag_direct.add_pdf_to_vector_store_custom(file_path=doc_path)
-    response = rag_direct.ask(question=question)
     print(response)

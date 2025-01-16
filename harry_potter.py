@@ -1,31 +1,16 @@
 from langchain_huggingface import HuggingFaceEmbeddings
-import faiss
-from langchain_community.docstore.in_memory import InMemoryDocstore
-from langchain_community.vectorstores import FAISS
 from harry_potter_facts import *
-from api_token import *
+from langchain_chroma import Chroma
 import transformers
 import torch
 
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+embeddings = "sentence-transformers/all-mpnet-base-v2"
 model_id = "meta-llama/Llama-3.2-3B-Instruct"
 
-try:
-    vector_store = FAISS.load_local(
-        "faiss_index", embeddings, allow_dangerous_deserialization=True
+vector_store = Chroma(
+        collection_name="example_collection",
+        embedding_function = HuggingFaceEmbeddings(model_name=embeddings),
     )
-    print("database loaded")
-
-except Exception:
-    vector_store = FAISS(
-        embedding_function=embeddings,
-        index=faiss.IndexFlatL2(),
-        docstore=InMemoryDocstore(),
-        index_to_docstore_id={},
-    )
-    print("new database created")
-    print(vector_store.add_texts(texts=harry_potter_facts))
-    vector_store.save_local("faiss_index")
 
 # llm = HuggingFaceEndpoint(
 #     repo_id=model_id,
@@ -50,6 +35,7 @@ except Exception:
 #retriever = vector_store.as_retriever()
 
 question = "Who wrote Harry Potter?"
+
 relevant_texts = vector_store.similarity_search_with_relevance_scores(question)
 context = ""
 for text in relevant_texts:
@@ -91,12 +77,3 @@ outputs = pipeline(
 )
 print(outputs[0]["generated_text"][-1])
 
-messages = [
-    {"role": "user", "content": question},
-]
-
-outputs = pipeline(
-    messages,
-    max_new_tokens=256,
-)
-print(outputs[0]["generated_text"][-1])
